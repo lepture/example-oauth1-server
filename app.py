@@ -98,6 +98,31 @@ class Nonce(db.Model):
     access_token = db.Column(db.String(50))
 
 
+class AccessToken(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    client_key = db.Column(
+        db.String(40), db.ForeignKey('client.client_key'),
+        nullable=False,
+    )
+    client = db.relationship('Client')
+
+    user_id = db.Column(
+        db.Integer, db.ForeignKey('user.id'),
+    )
+    user = db.relationship('User')
+
+    token = db.Column(db.String(255))
+    secret = db.Column(db.String(255))
+
+    _realms = db.Column(db.Text)
+
+    @property
+    def realms(self):
+        if self._realms:
+            return self._realms.split()
+        return []
+
+
 def current_user():
     if 'id' in session:
         uid = session['id']
@@ -203,6 +228,26 @@ def save_nonce(client_key, timestamp, nonce, request_token, access_token):
     db.session.add(nonce)
     db.session.commit()
     return nonce
+
+
+@oauth.tokengetter
+def load_access_token(client_key, token, *args, **kwargs):
+    return AccessToken.query.filter_by(
+        client_key=client_key, token=token
+    ).first()
+
+
+@oauth.tokensetter
+def save_access_token(token, request):
+    tok = AccessToken(
+        client=request.client,
+        user=request.user,
+        token=token['oauth_token'],
+        secret=token['oauth_token_secret'],
+        _realms=token['oauth_authorized_realms'],
+    )
+    db.session.add(tok)
+    db.session.commit()
 
 
 if __name__ == '__main__':
