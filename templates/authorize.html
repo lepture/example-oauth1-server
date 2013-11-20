@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Authorization</title>
+</head>
+<body>
+  <p>Client: {{ client.client_key }}</p>
+  <p>User: {{ user.username }}</p>
+  <form action="/oauth/authorize" method="post">
+    <p>Allow access?</p>
+    <input type="hidden" name="oauth_token" value="{{ resource_owner_key }}">
+    <input type="submit" name="confirm" value="yes">
+    <input type="submit" name="confirm" value="no">
+  </form>
+</body>
+</html>

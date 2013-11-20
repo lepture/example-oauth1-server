@@ -153,6 +153,7 @@ def client():
     item = Client(
         client_key=gen_salt(40),
         client_secret=gen_salt(50),
+        _redirect_uris='http://localhost:8000/authorized',
         user_id=user.id,
     )
     db.session.add(item)
@@ -175,7 +176,7 @@ def load_request_token(token):
 
 @oauth.grantsetter
 def save_request_token(token, request):
-    if oauth.realms:
+    if hasattr(oauth, 'realms') and oauth.realms:
         realms = ' '.join(request.realms)
     else:
         realms = None
@@ -248,6 +249,40 @@ def save_access_token(token, request):
     )
     db.session.add(tok)
     db.session.commit()
+
+
+@app.route('/oauth/request_token')
+@oauth.request_token_handler
+def request_token():
+    return {}
+
+
+@app.route('/oauth/access_token')
+@oauth.access_token_handler
+def access_token():
+    return {}
+
+
+@app.route('/oauth/authorize', methods=['GET', 'POST'])
+@oauth.authorize_handler
+def authorize(*args, **kwargs):
+    user = current_user()
+    if not user:
+        return redirect('/')
+    if request.method == 'GET':
+        client_key = kwargs.get('resource_owner_key')
+        client = Client.query.filter_by(client_key=client_key).first()
+        kwargs['client'] = client
+        kwargs['user'] = user
+        return render_template('authorize.html', **kwargs)
+    confirm = request.form.get('confirm', 'no')
+    return confirm == 'yes'
+
+
+import logging
+logger = logging.getLogger('flask_oauthlib')
+logger.addHandler(logging.StreamHandler())
+logger.setLevel(logging.DEBUG)
 
 
 if __name__ == '__main__':
