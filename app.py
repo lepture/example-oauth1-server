@@ -84,6 +84,20 @@ class RequestToken(db.Model):
         return []
 
 
+class Nonce(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+
+    timestamp = db.Column(db.Integer)
+    nonce = db.Column(db.String(40))
+    client_key = db.Column(
+        db.String(40), db.ForeignKey('client.client_key'),
+        nullable=False,
+    )
+    client = db.relationship('Client')
+    request_token = db.Column(db.String(50))
+    access_token = db.Column(db.String(50))
+
+
 def current_user():
     if 'id' in session:
         uid = session['id']
@@ -167,6 +181,28 @@ def save_verifier(token, verifier, *args, **kwargs):
     db.session.add(tok)
     db.session.commit()
     return tok
+
+
+@oauth.noncegetter
+def load_nonce(client_key, timestamp, nonce, request_token, access_token):
+    return Nonce.query.filter_by(
+        client_key=client_key, timestamp=timestamp, nonce=nonce,
+        request_token=request_token, access_token=access_token,
+    ).first()
+
+
+@oauth.noncesetter
+def save_nonce(client_key, timestamp, nonce, request_token, access_token):
+    nonce = Nonce(
+        client_key=client_key,
+        timestamp=timestamp,
+        nonce=nonce,
+        request_token=request_token,
+        access_token=access_token,
+    )
+    db.session.add(nonce)
+    db.session.commit()
+    return nonce
 
 
 if __name__ == '__main__':
