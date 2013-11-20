@@ -56,6 +56,34 @@ class Client(db.Model):
         return []
 
 
+class RequestToken(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey('user.id', ondelete='CASCADE')
+    )
+    user = db.relationship('User')
+
+    client_key = db.Column(
+        db.String(40), db.ForeignKey('client.client_key'),
+        nullable=False,
+    )
+    client = db.relationship('Client')
+
+    token = db.Column(db.String(255), index=True, unique=True)
+    secret = db.Column(db.String(255), nullable=False)
+
+    verifier = db.Column(db.String(255))
+
+    redirect_uri = db.Column(db.Text)
+    _realms = db.Column(db.Text)
+
+    @property
+    def realms(self):
+        if self._realms:
+            return self._realms.split()
+        return []
+
+
 def current_user():
     if 'id' in session:
         uid = session['id']
@@ -99,6 +127,46 @@ def client():
 @oauth.clientgetter
 def load_client(client_key):
     return Client.query.get(client_key)
+
+
+@oauth.grantgetter
+def load_request_token(token):
+    return RequestToken.query.filter_by(token=token).first()
+
+
+@oauth.grantsetter
+def save_request_token(token, request):
+    if oauth.realms:
+        realms = ' '.join(request.realms)
+    else:
+        realms = None
+    grant = RequestToken(
+        token=token['oauth_token'],
+        secret=token['oauth_token_secret'],
+        client=request.client,
+        redirect_uri=request.redirect_uri,
+        _realms=realms,
+    )
+    db.session.add(grant)
+    db.session.commit()
+    return grant
+
+
+@oauth.verifiergetter
+def load_verifier(verifier, token):
+    return RequestToken.query.filter_by(
+        verifier=verifier, token=token
+    ).first()
+
+
+@oauth.verifiersetter
+def save_verifier(token, verifier, *args, **kwargs):
+    tok = RequestToken.query.filter_by(token=token).first()
+    tok.verifier = verifier['oauth_verifier']
+    tok.user = current_user()
+    db.session.add(tok)
+    db.session.commit()
+    return tok
 
 
 if __name__ == '__main__':
