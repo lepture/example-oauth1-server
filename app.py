@@ -279,6 +279,13 @@ def authorize(*args, **kwargs):
     return confirm == 'yes'
 
 
+@app.route('/api/me')
+@oauth.require_oauth()
+def me(req):
+    user = req.user
+    return jsonify(username=user.username)
+
+
 import logging
 logger = logging.getLogger('flask_oauthlib')
 logger.addHandler(logging.StreamHandler())
