@@ -28,7 +28,8 @@ remote = oauth.remote_app(
 @app.route('/')
 def home():
     if 'example_oauth' in session:
-        return session['example_oauth']
+        resp = remote.get('me')
+        return jsonify(resp.data)
     return remote.authorize(callback=url_for('authorized', _external=True))
 
 
@@ -40,9 +41,16 @@ def authorized(resp):
             request.args['error']
         )
     if 'oauth_token' in resp:
-        session['dev_oauth'] = resp
+        session['example_oauth'] = resp
         return jsonify(resp)
     return str(resp)
+
+
+@remote.tokengetter
+def example_oauth_token():
+    if 'example_oauth' in session:
+        resp = session['example_oauth']
+        return resp['oauth_token'], resp['oauth_token_secret']
 
 
 import logging
