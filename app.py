@@ -153,7 +153,7 @@ def client():
     item = Client(
         client_key=gen_salt(40),
         client_secret=gen_salt(50),
-        _redirect_uris='http://localhost:8000/authorized',
+        _redirect_uris='http://127.0.0.1:8000/authorized',
         user_id=user.id,
     )
     db.session.add(item)
